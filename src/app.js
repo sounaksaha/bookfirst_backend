@@ -19,6 +19,8 @@ app.use("/api/auth/admin", adminAuthRoutes);
 app.use("/api/auth/business", businessAuthRoutes);
 app.use("/api/admin/category", categoryRoutes);
 app.use("/api/property", propertyRoutes);
-
+app.get('/', (req, res) => {
+  res.send('BookFirst API is running 🚀');
+});
 
 module.exports = app;
