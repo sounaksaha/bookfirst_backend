@@ -1,39 +1,4 @@
-const Category = require("../../models/Category");
 const BusinessOwner = require("../../models/BusinessOwner");
-
-
-// ===============================
-// 📂 CATEGORY
-// ===============================
-
-exports.createCategory = async (req, res) => {
-  try {
-    const { name, fields } = req.body;
-
-    const category = await Category.create({
-      name: name.toLowerCase(),
-      slug: name.toLowerCase().replace(/\s+/g, "-"),
-      fields
-    });
-
-    res.json({
-      success: true,
-      data: category
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.getAllCategories = async (req, res) => {
-  const data = await Category.find();
-
-  res.json({
-    success: true,
-    data
-  });
-};
 
 
 // ===============================

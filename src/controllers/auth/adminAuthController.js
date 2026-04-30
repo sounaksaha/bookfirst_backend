@@ -1,6 +1,4 @@
 const Admin = require("../../models/Admin");
-const otpService = require("../../services/auth/otpService");
-const { saveTempUser, getTempUser, deleteTempUser } = require("../../utils/tempStore");
 const jwt = require("jsonwebtoken");
 
 
@@ -8,27 +6,27 @@ const jwt = require("jsonwebtoken");
 // 🔐 REGISTER
 // ===============================
 
-// SEND OTP
-exports.registerSendOtp = async (req, res) => {
+exports.register = async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, email, password } = req.body;
 
-    const exists = await Admin.findOne({ phone });
+    const exists = await Admin.findOne({ email });
 
     if (exists) {
       return res.status(400).json({
-        success: false,
         message: "Admin already exists"
       });
     }
 
-    saveTempUser(phone, { name, phone, role: "admin" });
-
-    await otpService.sendOtp(phone);
+    const admin = await Admin.create({
+      name,
+      email,
+      password
+    });
 
     res.json({
       success: true,
-      message: "OTP sent for admin registration"
+      message: "Admin registered successfully"
     });
 
   } catch (error) {
@@ -37,60 +35,12 @@ exports.registerSendOtp = async (req, res) => {
 };
 
 
-// VERIFY OTP + CREATE ADMIN
-exports.registerVerifyOtp = async (req, res) => {
+exports.login = async (req, res) => {
   try {
-    const { phone, otp } = req.body;
+    const { email, password } = req.body;
 
-    const verification = await otpService.verifyOtp(phone, otp);
-
-    if (verification.status !== "approved") {
-      return res.status(400).json({
-        message: "Invalid OTP"
-      });
-    }
-
-    const tempData = getTempUser(phone);
-
-    if (!tempData) {
-      return res.status(400).json({
-        message: "Session expired"
-      });
-    }
-
-    const admin = await Admin.create(tempData);
-
-    deleteTempUser(phone);
-
-    const token = jwt.sign(
-      { id: admin._id, role: admin.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.json({
-      success: true,
-      message: "Admin registered successfully",
-      token,
-      data: admin
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
-// ===============================
-// 🔐 LOGIN
-// ===============================
-
-// SEND OTP
-exports.loginSendOtp = async (req, res) => {
-  try {
-    const { phone } = req.body;
-
-    const admin = await Admin.findOne({ phone });
+    // 🔍 find admin (include password)
+    const admin = await Admin.findOne({ email }).select("+password");
 
     if (!admin) {
       return res.status(404).json({
@@ -99,34 +49,17 @@ exports.loginSendOtp = async (req, res) => {
       });
     }
 
-    await otpService.sendOtp(phone);
+    // 🔐 check password
+    const isMatch = await admin.comparePassword(password);
 
-    res.json({
-      success: true,
-      message: "OTP sent for login"
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
-// VERIFY OTP
-exports.loginVerifyOtp = async (req, res) => {
-  try {
-    const { phone, otp } = req.body;
-
-    const verification = await otpService.verifyOtp(phone, otp);
-
-    if (verification.status !== "approved") {
+    if (!isMatch) {
       return res.status(400).json({
-        message: "Invalid OTP"
+        success: false,
+        message: "Invalid credentials"
       });
     }
 
-    const admin = await Admin.findOne({ phone });
-
+    // 🎟️ generate token
     const token = jwt.sign(
       { id: admin._id, role: admin.role },
       process.env.JWT_SECRET,
@@ -137,7 +70,11 @@ exports.loginVerifyOtp = async (req, res) => {
       success: true,
       message: "Login successful",
       token,
-      data: admin
+      data: {
+        _id: admin._id,
+        name: admin.name,
+        email: admin.email
+      }
     });
 
   } catch (error) {
