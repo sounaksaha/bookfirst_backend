@@ -14,6 +14,15 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
+    const isValidPhone = /^\+[1-9]\d{7,14}$/.test(phone);
+
+    if (!isValidPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must include country code. Example: +919876543210",
+      });
+    }
+
     const exists = await BusinessOwner.findOne({ phone });
 
     if (exists) {
@@ -34,7 +43,7 @@ exports.sendOtp = async (req, res) => {
       success: false,
       message: error.message,
     });
-  } 
+  }
 };
 
 exports.verifyOtp = async (req, res) => {
@@ -48,6 +57,15 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
+    const isValidPhone = /^\+[1-9]\d{7,14}$/.test(phone);
+
+    if (!isValidPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must include country code. Example: +919876543210",
+      });
+    }
+
     const verification = await otpService.verifyOtp(phone, otp);
 
     if (verification.status !== "approved") {
@@ -57,7 +75,6 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    // Check again before creating verified session
     const exists = await BusinessOwner.findOne({ phone });
 
     if (exists) {
@@ -67,7 +84,6 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    // Create 1 hour verified session
     saveVerifiedPhoneSession(phone);
 
     return res.status(200).json({
