@@ -106,12 +106,25 @@ exports.verifyOtp = async (req, res) => {
 
 exports.registerBusinessOwner = async (req, res) => {
   try {
-    const { phone, name, email } = req.body;
+    let { phone, name, email } = req.body;
 
     if (!phone || !name) {
       return res.status(400).json({
         success: false,
         message: "Phone and name are required",
+      });
+    }
+
+    phone = phone.trim();
+    name = name.trim();
+    email = email ? email.trim().toLowerCase() : undefined;
+
+    const isValidPhone = /^\+[1-9]\d{7,14}$/.test(phone);
+
+    if (!isValidPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must include country code. Example: +919876543210",
       });
     }
 
@@ -151,7 +164,7 @@ exports.registerBusinessOwner = async (req, res) => {
       isPhoneVerified: true,
     });
 
-    deleteTempUser(phone);
+    deleteTempUser(phone); // make sure this deletes the verified OTP session
 
     return res.status(201).json({
       success: true,
